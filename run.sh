@@ -44,6 +44,26 @@ wait_for_service_start() {
     fi
 }
 
+# Tail a component's wso2carbon.log into logs/, waiting (max 60s) for the file to be created first
+tail_component_log() {
+    local service_name=$1
+    local log_file="$(pwd)/components/$2/repository/logs/wso2carbon.log"
+    local out_file="logs/$service_name.log"
+
+    echo "Waiting for $service_name log file to be created..."
+    local wait=0
+    while [ ! -f "$log_file" ]; do
+        sleep 1
+        wait=$((wait + 1))
+        if [ "$wait" -ge 60 ]; then
+            echo "Error: $service_name log file not created within 60s"
+            return 1
+        fi
+    done
+
+    tail -f -n 5 "$log_file" > "$out_file" 2>/dev/null &
+}
+
 u2() {
     if [ -x "./bin/update_tool_setup.sh" ]; then
         ./bin/update_tool_setup.sh
@@ -370,7 +390,7 @@ if [ $? -ne 0 ]; then
     exit $?
 fi
 
-tail -f -n 5 "$(pwd)/components/wso2am-acp/repository/logs/wso2carbon.log" > logs/apim-acp.log 2>/dev/null &
+tail_component_log "apim-acp" "wso2am-acp"
 
 # Wait until apim-acp is fully started and responding
 wait_for_service_start "apim-acp" 0
@@ -383,7 +403,7 @@ if [ $? -ne 0 ]; then
     exit $?
 fi
 
-tail -f -n 5 "$(pwd)/components/wso2am-tm/repository/logs/wso2carbon.log" > logs/apim-tm.log 2>/dev/null &
+tail_component_log "apim-tm" "wso2am-tm"
 
 # Wait until apim-tm is fully started and responding
 wait_for_service_start "apim-tm" 1
@@ -396,7 +416,7 @@ if [ $? -ne 0 ]; then
     exit $?
 fi
 
-tail -f -n 5 "$(pwd)/components/wso2am-universal-gw/repository/logs/wso2carbon.log" > logs/apim-universal-gw.log 2>/dev/null &
+tail_component_log "apim-universal-gw" "wso2am-universal-gw"
 
 # Wait until apim-universal-gw is fully started and responding
 wait_for_service_start "apim-universal-gw" 2
